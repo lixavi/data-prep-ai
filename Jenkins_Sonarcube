@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+    tools {
+        maven 'Maven' 
+    }
+    stages{
+        stage('GetCode'){
+            steps{
+                git 'https://github.com/Muhammad-Awab/java_maven'
+                
+            }
+        }
+        stage('mvn package'){
+            steps{
+                sh 'mvn clean install'
+            }
+        }
+        stage('Sonarqube Anaylsis'){
+            steps{
+                withSonarQubeEnv('sonarcube-9.9.0'){
+                    sh "mvn sonar:sonar"
+                }
+            }
+        }
+        stage('BuildDockerImage'){
+            steps{
+                sh 'docker image build . -t awab82002/maven:latest'
+            }
+        }
+        stage('Push Image'){
+            steps{
+                withCredentials([string(credentialsId: 'hpwd', variable: 'HUB')]) {
+                  sh "docker login -u awab82002 -p ${HUB}"
+                }
+                sh 'docker push awab82002/maven:latest'
+                
+            }
+        }
+        stage("Pull Image from Docker Hub and push to ecr"){
+            steps{
+                sshagent(['ssh-key']) {
+                 sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.93.0.173 aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/o3s7i2x8'
+                 sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.93.0.173 docker pull awab82002/maven:latest'
+                 sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.93.0.173 docker tag awab82002/maven:latest public.ecr.aws/o3s7i2x8/maven:latest'
+                 sh 'ssh -o StrictHostKeyChecking=no ubuntu@3.93.0.173 docker push public.ecr.aws/o3s7i2x8/maven:latest'
+                
+                 }
+            }
+        }
+       
+        
+    }
+}

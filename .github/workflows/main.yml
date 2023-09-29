@@ -1,0 +1,26 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+ 
+
+jobs:
+
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Stop and remove existing container
+      run: |
+        sudo docker stop my-java-app1 || true
+        sudo docker rm my-java-app1 || true
+
+    - name: Build and run Docker container
+      run: |
+        sudo docker build -t my-java-app1 .
+        sudo docker run -d -p 8080:8080 --name my-java-app1 my-java-app1
+
+
